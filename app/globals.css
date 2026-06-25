@@ -1,26 +1,127 @@
 @import "tailwindcss";
 
+/* =====================================================================
+   ABC Favorit — self-hosted (variable woff2).
+   NOTE: these are Dinamo TRIAL/unlicensed files. Fine for local dev only.
+   Do NOT deploy publicly until a Dinamo web license is held.
+   Weight axis exposed as 300–400 ONLY (Light → Regular). Never Medium/Bold.
+   ===================================================================== */
+@font-face {
+  font-family: "Favorit";
+  src: url("/fonts/FavoritVariable.woff2") format("woff2");
+  font-weight: 300 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Favorit Mono";
+  src: url("/fonts/FavoritMonoVariable.woff2") format("woff2");
+  font-weight: 300 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =====================================================================
+   Brand tokens — ported verbatim from the Marble iOS app.
+   Monochrome, warm. No accent color. Sharp edges everywhere.
+   ===================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f4eee4; /* bone — warm white background */
+  --ink: #0e0a07; /* warm near-black — text on light */
+  --taupe: #6b6358; /* muted taupe — subtext / labels / captions */
+  --card: #faf5eb; /* lighter bone — raised surfaces */
+  --field: #ede7db; /* input field fill */
+  --hairline: #e5e0da; /* strokes / dividers */
+  --dark: #181410; /* warm soft black (not pure black) — bg after lights-off */
+  --dark-text: #f4eee4; /* bone — text on dark (not pure white) */
+
+  /* Lights-off flip: 0 = paper/ink, 1 = dark/dark-text. GSAP scrubs this. */
+  --flip: 0;
+
+  --font-favorit: "Favorit", var(--font-hanken, "Hanken Grotesk"), system-ui,
+    sans-serif;
+  --font-favorit-mono: "Favorit Mono", var(--font-hanken, "Hanken Grotesk"),
+    ui-monospace, "SFMono-Regular", monospace;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-taupe: var(--taupe);
+  --color-card: var(--card);
+  --color-field: var(--field);
+  --color-hairline: var(--hairline);
+  --color-dark: var(--dark);
+  --color-dark-text: var(--dark-text);
+
+  --font-sans: var(--font-favorit);
+  --font-mono: var(--font-favorit-mono);
+
+  /* Sharp edges everywhere — zero radius, no exceptions. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* =====================================================================
+   Base
+   ===================================================================== */
+*,
+*::before,
+*::after {
+  border-radius: 0; /* belt-and-suspenders against any stray rounding */
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: auto; /* Lenis owns smooth scroll; never CSS smooth */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Continuous page palette derived from --flip (the lights-off moment). */
+  --page-bg: color-mix(in srgb, var(--dark) calc(var(--flip) * 100%), var(--paper));
+  --page-text: color-mix(
+    in srgb,
+    var(--dark-text) calc(var(--flip) * 100%),
+    var(--ink)
+  );
+  background-color: var(--page-bg);
+  color: var(--page-text);
+  font-family: var(--font-favorit);
+  font-weight: 300; /* Light is the reading surface */
+  font-synthesis-weight: none; /* never synthesize a bolder weight */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Visible keyboard focus for links/buttons. Text inputs are excluded — they
+   live inside their own bordered field, so the detached outline reads as noise. */
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+/* Pointer affordance (Tailwind v4 preflight no longer adds it by default).
+   NOTE: do not re-add a `button { background:none }` reset here — unlayered
+   rules beat @layer utilities and would silently kill bg-* on buttons. */
+button:not(:disabled),
+[role="button"] {
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
