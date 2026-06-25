@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ScreenQuad, useTexture } from "@react-three/drei";
 import * as THREE from "three";
@@ -146,25 +146,14 @@ function HalftonePlane({
 }
 
 export function HalftoneShader(props: HalftoneProps) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { rootMargin: "120px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
+  // Always render so the cursor trail keeps animating. (Single hero shader →
+  // negligible cost; the demand/visibility toggle was unreliable on the pinned
+  // hero layout and could freeze the loop.)
   return (
-    <div ref={wrapRef} className="absolute inset-0 h-full w-full">
+    <div className="absolute inset-0 h-full w-full">
       <Canvas
         flat
-        frameloop={visible ? "always" : "demand"}
+        frameloop="always"
         dpr={[1, 2]}
         gl={{ alpha: true, antialias: true, premultipliedAlpha: false }}
         style={{ width: "100%", height: "100%" }}

@@ -20,54 +20,61 @@ function Words({ text }: { text: string }) {
   );
 }
 
-// One flowing paragraph (placeholder — final copy later). Consistent size.
-const MANIFESTO =
-  "Man cannot remake himself without suffering, for he is both the marble and the sculptor. This is your record — no coaches, no notifications, no noise. Just the work: the line you return to each morning, and the figure that slowly emerges from it. What you make of it is yours alone.";
+const P1 =
+  "At birth we are given a vessel of marble with which our soul will come to know and experience this world. It is the artist's duty to cultivate the vessel to reflect the beauty of the soul within, and the world we inhabit. This is a creative discipline.";
+const P2 =
+  "Marble is a tool designed to help you reach your greatest physical potential. We seek the highest form of human creativity is sculpting the vessel with which our soul comes in contact with this world.";
 
 /**
- * Pure-text section — one paragraph, lighter, filling word-by-word on scroll.
- * It also hosts the lights-off moment: at a threshold the whole page FLASHES to
- * dark in a single clean event (a --flip toggle), never a gradual scrub.
+ * Two-paragraph statement. Each paragraph fills word-by-word at the reading line
+ * (lighter final opacity). The lights-off fade fires BETWEEN them — as the second
+ * paragraph arrives the page dims to dark, so P2 reads in the dark.
  */
 export function Manifesto() {
   const root = useRef<HTMLElement>(null);
+  const p1Ref = useRef<HTMLParagraphElement>(null);
+  const p2Ref = useRef<HTMLParagraphElement>(null);
 
   useGSAP(
     () => {
-      const el = root.current;
-      if (!el) return;
+      const p1 = p1Ref.current;
+      const p2 = p2Ref.current;
+      if (!p1 || !p2) return;
 
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        // Word-by-word reveal to a lighter final opacity.
-        gsap.fromTo(
-          el.querySelectorAll(".reveal-word"),
-          { opacity: 0.1 },
-          {
-            opacity: 0.72,
-            ease: "none",
-            stagger: 0.4,
-            scrollTrigger: {
-              trigger: el,
-              start: "top 78%",
-              end: "bottom 62%",
-              scrub: true,
+        // Reading-paced word reveal — each paragraph lights as it crosses center.
+        const reveal = (p: HTMLElement) =>
+          gsap.fromTo(
+            p.querySelectorAll(".reveal-word"),
+            { opacity: 0.1 },
+            {
+              opacity: 0.72,
+              ease: "none",
+              stagger: 0.12,
+              scrollTrigger: {
+                trigger: p,
+                start: "top 82%",
+                end: "top 45%",
+                scrub: true,
+              },
             },
-          },
-        );
+          );
+        reveal(p1);
+        reveal(p2);
 
-        // Lights-off — a timed fade at a threshold (a dimmer being turned down,
-        // fired as one event; NOT scroll-scrubbed, so no jittery in-between states).
+        // Lights-off — a timed fade fired BETWEEN the paragraphs (as P2 arrives).
+        const pingNav = () => window.dispatchEvent(new Event("marble:flip"));
         const flip = ScrollTrigger.create({
-          trigger: el,
-          start: "bottom 75%",
+          trigger: p2,
+          start: "top 78%",
           onEnter: () =>
             gsap.to(document.documentElement, {
               "--flip": 1,
               duration: 0.7,
               ease: "power2.inOut",
               overwrite: true,
-              onUpdate: () => window.dispatchEvent(new Event("marble:flip")),
+              onUpdate: pingNav,
             }),
           onLeaveBack: () =>
             gsap.to(document.documentElement, {
@@ -75,7 +82,7 @@ export function Manifesto() {
               duration: 0.7,
               ease: "power2.inOut",
               overwrite: true,
-              onUpdate: () => window.dispatchEvent(new Event("marble:flip")),
+              onUpdate: pingNav,
             }),
         });
 
@@ -89,25 +96,19 @@ export function Manifesto() {
     { scope: root },
   );
 
+  const paraCls =
+    "text-balance text-[clamp(1.5rem,3vw,2.4rem)] font-light leading-[1.4] tracking-[-0.01em]";
+
   return (
     <section ref={root} data-manifesto className="relative">
       <Container>
-        <div className="mx-auto max-w-3xl py-40 sm:py-56">
-          <p className="text-balance text-[clamp(1.5rem,3vw,2.4rem)] font-light leading-[1.4] tracking-[-0.01em]">
-            <Words text={MANIFESTO} />
+        <div className="mx-auto flex max-w-3xl flex-col gap-16 py-40 sm:gap-24 sm:py-56">
+          <p ref={p1Ref} className={paraCls}>
+            <Words text={P1} />
           </p>
-          <a
-            href="/library"
-            className="group mt-14 inline-flex items-center gap-2 font-mono text-[0.6875rem] uppercase tracking-[0.16em] text-taupe transition-colors hover:text-[var(--page-text)]"
-          >
-            Further reading
-            <span
-              aria-hidden
-              className="transition-transform duration-300 group-hover:translate-x-1"
-            >
-              →
-            </span>
-          </a>
+          <p ref={p2Ref} className={paraCls}>
+            <Words text={P2} />
+          </p>
         </div>
       </Container>
     </section>

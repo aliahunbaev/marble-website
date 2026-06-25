@@ -27,7 +27,7 @@ export const halftoneFragment = /* glsl */ `
   uniform float uInvert;           // 1 = bright→ink, 0 = dark→ink
   uniform vec3  uDotColor;
   uniform float uGhost;
-  uniform float uDissolve;         // 0 = intact, 1 = scattered
+  uniform float uDissolve;         // 0 = intact, 1 = scattered (scroll→film)
 
   uniform vec2  uTrail[20];        // recent cursor cell centers (CSS px)
   uniform float uTrailDecay[20];   // their activation 0..1
@@ -41,12 +41,11 @@ export const halftoneFragment = /* glsl */ `
     vec2 fragPx = vUv * uResolution;
     vec2 cellId = floor(fragPx / uCell);
     vec2 cellCenter = (cellId + 0.5) * uCell;
+    float h = hash(cellId);
 
-    // Dissolve — each cell drops out (shrinks away) at its own random threshold,
-    // so the field depopulates box-by-box as the film resolves.
     // Dissolve — each cell scatters in a hashed direction as the film resolves.
     vec2 blockCenter = cellCenter;
-    float ang = hash(cellId) * 6.2831853;
+    float ang = h * 6.2831853;
     blockCenter += vec2(cos(ang), sin(ang)) * uDissolve * 90.0;
 
     // Tone for this cell (cover-fit sample).

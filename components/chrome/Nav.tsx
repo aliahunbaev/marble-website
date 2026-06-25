@@ -71,7 +71,7 @@ export function Nav() {
         </a>
 
         {/* Center — byline / positioning (text, not a link) */}
-        <p className="pointer-events-none absolute left-1/2 hidden -translate-x-1/2 text-[0.8rem] font-light text-taupe lg:block">
+        <p className="pointer-events-none absolute left-1/2 hidden -translate-x-1/2 font-mono text-[0.6875rem] uppercase tracking-[0.16em] text-taupe lg:block">
           Training journal designed by Combat Créatif
         </p>
 

@@ -65,6 +65,14 @@ export function WaitlistCTA({
     }
   }
 
+  // Click-away collapses the field back to the resting CTA — unless focus moved
+  // to the submit button (let that click submit first).
+  function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
+    const next = e.relatedTarget as HTMLElement | null;
+    if (next?.closest("[data-cta-submit]")) return;
+    if (phase === "open" || phase === "error") setPhase("idle");
+  }
+
   // Instant-invert color pair for the nav idle chip (the tactile signature).
   const idleInvert =
     tone === "dark"
@@ -125,12 +133,14 @@ export function WaitlistCTA({
               placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={handleBlur}
               aria-label="Email address"
               aria-invalid={!!error}
               className={cn("min-w-0 flex-1 bg-transparent outline-none", textCls)}
             />
             <button
               type="submit"
+              data-cta-submit
               disabled={busy}
               aria-label="Join the waitlist"
               className="shrink-0 transition-opacity disabled:opacity-40"
@@ -190,11 +200,13 @@ export function WaitlistCTA({
               placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={handleBlur}
               aria-label="Email address"
               className="h-full min-w-0 flex-1 bg-transparent px-4 text-[1.0625rem] font-light text-ink caret-ink outline-none placeholder:text-taupe"
             />
             <button
               type="submit"
+              data-cta-submit
               disabled={busy}
               aria-label="Join the waitlist"
               className="flex h-full shrink-0 items-center pr-3 text-ink transition-transform duration-100 active:scale-90 disabled:opacity-40"

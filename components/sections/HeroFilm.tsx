@@ -114,6 +114,29 @@ export function HeroFilm() {
           whiteIn.kill();
         };
       });
+
+      // Entrance — one-time load choreography (all widths, motion-ok): h1 → CTA →
+      // halftone builds in → film fades up. The initial hidden state is CSS
+      // (opacity-0 / motion-reduce:opacity-100) so first paint never flashes.
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        const h1 = section.querySelector("h1");
+        const cta = section.querySelector<HTMLElement>("[data-hero-cta]");
+        const film = filmGroupRef.current;
+        if (!h1 || !cta) return;
+        gsap.set([h1, cta], { y: 18 });
+
+        const tl = gsap.timeline({ delay: 0.15 });
+        tl.to(h1, { autoAlpha: 1, y: 0, duration: 0.7, ease: "power2.out" });
+        tl.to(cta, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, "-=0.4");
+        if (film)
+          tl.to(film, { autoAlpha: 1, duration: 0.7, ease: "power1.out" }, "-=0.35");
+
+        return () => {
+          tl.kill();
+          gsap.set([h1, cta], { clearProps: "opacity,visibility,transform" });
+          if (film) gsap.set(film, { clearProps: "opacity,visibility" });
+        };
+      });
     },
     { scope: sectionRef },
   );
@@ -135,6 +158,7 @@ export function HeroFilm() {
               focalX={0.52}
               focalY={0.4}
               dissolveRef={dissolve}
+              className="halftone-fade-in"
             />
             <div
               aria-hidden
@@ -145,12 +169,15 @@ export function HeroFilm() {
           {/* Content layer — fades out (in place) by scroll % */}
           <div ref={contentRef} className="relative z-10 flex flex-1 flex-col">
             <Container className="flex flex-1 flex-col justify-center pt-16">
-              <h1 className="text-[2.75rem] font-light leading-[0.92] tracking-[-0.03em] text-ink sm:text-[3.5rem] md:text-[4.5rem] lg:text-[5.75rem] xl:text-[7rem] 2xl:text-[8rem]">
+              <h1 className="text-[2.75rem] font-light leading-[0.92] tracking-[-0.03em] text-ink opacity-0 motion-reduce:opacity-100 sm:text-[3.5rem] md:text-[4.5rem] lg:text-[5.75rem] xl:text-[7rem] 2xl:text-[8rem]">
                 Document
                 <br />
                 your training.
               </h1>
-              <div className="mt-9 flex justify-end sm:mt-12">
+              <div
+                data-hero-cta
+                className="mt-9 flex justify-end opacity-0 motion-reduce:opacity-100 sm:mt-12"
+              >
                 <WaitlistCTA variant="bar" className="w-full max-w-[42rem]" />
               </div>
             </Container>
@@ -163,7 +190,7 @@ export function HeroFilm() {
             {/* The moving group — label + frame ride together */}
             <div
               ref={filmGroupRef}
-              className="relative mx-auto w-full origin-center lg:motion-safe:w-[min(100%,112svh)]"
+              className="relative mx-auto w-full origin-center opacity-0 motion-reduce:opacity-100 lg:motion-safe:w-[min(100%,112svh)]"
             >
               {/* Label, glued just above the frame (fades out mid-rise) */}
               <div
