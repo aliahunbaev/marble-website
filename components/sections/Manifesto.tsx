@@ -44,30 +44,31 @@ export function Manifesto() {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         // Reading-paced word reveal — each paragraph lights as it crosses center.
-        const reveal = (p: HTMLElement) =>
+        const reveal = (p: HTMLElement, toOpacity: number) =>
           gsap.fromTo(
             p.querySelectorAll(".reveal-word"),
             { opacity: 0.1 },
             {
-              opacity: 0.72,
+              opacity: toOpacity,
               ease: "none",
               stagger: 0.12,
               scrollTrigger: {
                 trigger: p,
-                start: "top 82%",
-                end: "top 45%",
+                start: "top 60%",
+                end: "top 10%",
                 scrub: true,
               },
             },
           );
-        reveal(p1);
-        reveal(p2);
+        // Both fill to full opacity — P1 stays legible once the page flips to dark.
+        reveal(p1, 1);
+        reveal(p2, 1);
 
         // Lights-off — a timed fade fired BETWEEN the paragraphs (as P2 arrives).
         const pingNav = () => window.dispatchEvent(new Event("marble:flip"));
         const flip = ScrollTrigger.create({
           trigger: p2,
-          start: "top 78%",
+          start: "top 62%",
           onEnter: () =>
             gsap.to(document.documentElement, {
               "--flip": 1,

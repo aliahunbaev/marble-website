@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
-import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
+import { cn } from "@/lib/cn";
 import { Container } from "@/components/primitives/Container";
 import { Halftone } from "@/components/halftone/Halftone";
 import { WaitlistCTA } from "@/components/cta/WaitlistCTA";
+import { FilmScrubber } from "./FilmScrubber";
 
 function PlayTriangle({ className }: { className?: string }) {
   return (
@@ -16,15 +17,32 @@ function PlayTriangle({ className }: { className?: string }) {
   );
 }
 
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.4}
+      aria-hidden
+      className={className}
+    >
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+// Scroll progress at which the film sits centered + held (0.5–1.0 in the timeline).
+const FOCUS_PROGRESS = 0.6;
+
+type Phase = "idle" | "focused";
+
 /**
- * Coupled hero → film (Cosmos-style). Sequence on scroll (lg+ only):
- *   1. hero text/CTA fade out IN PLACE first (so they never overlap the film);
- *   2. the film group rises from its peek to centered (slight scale up) while
- *      the halftone scatters + fades;
- *   3. the "Watch the film" label above fades out past halfway;
- *   4. the white "Watch / the film" rises up over the movie as it centers;
- *   5. it holds.
- * Below lg / reduced-motion: a fixed, full-size static player, label above it.
+ * Coupled hero → film. Scrolling pins the hero and rises the film from a peek to
+ * centered. Clicking the film (from anywhere) scrolls the page to that centered
+ * hold point, then the SAME frame becomes the movie IN PLACE: the page washes
+ * near-white over everything (nav included), the video plays from the start, and
+ * one clean scrubber line + a close X appear. Close returns it to the poster.
  */
 export function HeroFilm() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -33,8 +51,16 @@ export function HeroFilm() {
   const filmGroupRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const watchTextRef = useRef<HTMLDivElement>(null);
+  const filmFrameRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
   const dissolve = useRef(0);
-  const [playing, setPlaying] = useState(false);
+
+  const stRef = useRef<ScrollTrigger | null>(null);
+  const scrollTweenRef = useRef<gsap.core.Tween | null>(null);
+
+  const [phase, setPhase] = useState<Phase>("idle");
+  const focused = phase === "focused";
 
   useGSAP(
     () => {
@@ -65,17 +91,16 @@ export function HeroFilm() {
             invalidateOnRefresh: true,
           },
         });
+        stRef.current = tl.scrollTrigger ?? null;
+
         // Film rises immediately — concurrent with the text fade, doesn't wait.
-        // (No overlap: it rises from the bottom while the text fades in the center.)
         tl.fromTo(
           group,
           { y: restY, scale: REST_SCALE },
           { y: 0, scale: 1, ease: "none", duration: 0.5 },
           0,
         );
-        // Hero text + CTA drift UP at the film's pace and fade as they go — like
-        // they're being scrolled away as the film rises into their place.
-        // Same velocity as the film (−0.4·restY / 0.2 == −restY / 0.5).
+        // Hero text + CTA drift UP at the film's pace and fade as they go.
         tl.to(
           contentRef.current,
           { y: () => -0.4 * restY(), autoAlpha: 0, ease: "none", duration: 0.2 },
@@ -89,8 +114,7 @@ export function HeroFilm() {
         // Hold centered — stays pinned a bit longer.
         tl.to({}, { duration: 0.5 }, 0.5);
 
-        // White "Watch / the film" — a timed, staggered fade-up (Watch first, then
-        // the film), fired as an EVENT early in the rise (animates, not instant).
+        // White "Watch / the film" — a timed, staggered fade-up.
         const whiteIn = gsap.timeline({ paused: true });
         if (watchTextRef.current) {
           whiteIn.from(Array.from(watchTextRef.current.children), {
@@ -110,30 +134,28 @@ export function HeroFilm() {
 
         return () => {
           section.style.height = "";
+          stRef.current = null;
           whiteTrigger.kill();
           whiteIn.kill();
         };
       });
 
-      // Entrance — one-time load choreography (all widths, motion-ok): h1 → CTA →
-      // halftone builds in → film fades up. The initial hidden state is CSS
-      // (opacity-0 / motion-reduce:opacity-100) so first paint never flashes.
+      // Entrance — one-time load choreography (all widths, motion-ok).
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         const h1 = section.querySelector("h1");
         const cta = section.querySelector<HTMLElement>("[data-hero-cta]");
         const film = filmGroupRef.current;
         if (!h1 || !cta) return;
-        gsap.set([h1, cta], { y: 18 });
 
         const tl = gsap.timeline({ delay: 0.15 });
-        tl.to(h1, { autoAlpha: 1, y: 0, duration: 0.7, ease: "power2.out" });
-        tl.to(cta, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, "-=0.4");
+        tl.to(h1, { autoAlpha: 1, duration: 0.7, ease: "power2.out" });
+        tl.to(cta, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, "-=0.4");
         if (film)
           tl.to(film, { autoAlpha: 1, duration: 0.7, ease: "power1.out" }, "-=0.35");
 
         return () => {
           tl.kill();
-          gsap.set([h1, cta], { clearProps: "opacity,visibility,transform" });
+          gsap.set([h1, cta], { clearProps: "opacity,visibility" });
           if (film) gsap.set(film, { clearProps: "opacity,visibility" });
         };
       });
@@ -141,9 +163,116 @@ export function HeroFilm() {
     { scope: sectionRef },
   );
 
+  // The scroll Y where the film is centered: from the pinned trigger (read live),
+  // else (no pin) computed from the frame's current rect.
+  const centeredScrollY = useCallback(() => {
+    const st = stRef.current;
+    if (st) return st.start + FOCUS_PROGRESS * (st.end - st.start);
+    const frame = filmFrameRef.current;
+    if (frame) {
+      const r = frame.getBoundingClientRect();
+      return window.scrollY + r.top - (window.innerHeight - r.height) / 2;
+    }
+    return window.scrollY;
+  }, []);
+
+  const closeFocus = useCallback(() => {
+    scrollTweenRef.current?.kill();
+    setPhase("idle");
+  }, []);
+
+  // Enter focus immediately — the wash + poster→video swap apply at once; the
+  // scroll-to-center runs inside the focus effect (concurrently, under the wash).
+  const openFocus = () => {
+    if (phase !== "idle") return;
+    setPhase("focused");
+  };
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play().catch(() => {});
+    else v.pause();
+  };
+
+  // The wash + poster→video swap apply immediately (state). This effect scrolls
+  // the film to center under the wash; once landed it locks scroll, freezes the
+  // scrub, settles the frame dead-center, and plays from the start.
+  useEffect(() => {
+    if (phase !== "focused") return;
+    const body = document.body;
+    const prevActive = document.activeElement as HTMLElement | null;
+    let prevBodyOverflow = "";
+    let prevPad = "";
+    const blockScroll = (e: Event) => e.preventDefault();
+
+    const lockAndPlay = () => {
+      prevBodyOverflow = body.style.overflow;
+      prevPad = body.style.paddingRight;
+      const sb = window.innerWidth - document.documentElement.clientWidth;
+      body.style.overflow = "hidden";
+      if (sb > 0) body.style.paddingRight = `${sb}px`;
+      window.addEventListener("wheel", blockScroll, { passive: false });
+      window.addEventListener("touchmove", blockScroll, { passive: false });
+      // Settle dead-center (the scrub can lag the tween). The trigger stays
+      // ENABLED — the locked scroll just holds it here, so leaving focus needs
+      // no re-enable (re-enabling is what snapped the film up from below).
+      gsap.to(filmGroupRef.current, {
+        y: 0,
+        scale: 1,
+        duration: 0.4,
+        ease: "power2.out",
+      });
+      const v = videoRef.current;
+      if (v) {
+        v.currentTime = 0;
+        v.play().catch(() => {});
+      }
+    };
+
+    const target = centeredScrollY();
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || Math.abs(window.scrollY - target) < 4) {
+      if (reduce) window.scrollTo(0, target);
+      lockAndPlay();
+    } else {
+      scrollTweenRef.current = gsap.to(window, {
+        scrollTo: { y: target, autoKill: false },
+        duration: 0.55,
+        ease: "power2.inOut",
+        onComplete: lockAndPlay,
+      });
+    }
+
+    closeBtnRef.current?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeFocus();
+    };
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      scrollTweenRef.current?.kill();
+      // Just leave focus: unlock, stop the movie, hand the frame back to the
+      // scrub. The scroll never moved, so the film stays put — no snap.
+      window.removeEventListener("wheel", blockScroll);
+      window.removeEventListener("touchmove", blockScroll);
+      body.style.overflow = prevBodyOverflow;
+      body.style.paddingRight = prevPad;
+      gsap.set(filmGroupRef.current, { clearProps: "transform" });
+      videoRef.current?.pause();
+      window.removeEventListener("keydown", onKey);
+      prevActive?.focus?.({ preventScroll: true });
+    };
+  }, [phase, closeFocus, centeredScrollY]);
+
   return (
     <section id="top" ref={sectionRef} className="relative bg-paper">
-      <div className="lg:motion-safe:sticky lg:motion-safe:top-0 lg:motion-safe:h-[100svh] lg:motion-safe:overflow-hidden">
+      <div
+        className={cn(
+          "relative lg:motion-safe:sticky lg:motion-safe:top-0 lg:motion-safe:h-[100svh] lg:motion-safe:overflow-hidden",
+          focused && "z-[60]",
+        )}
+      >
         {/* ---- Hero block (halftone + content) ---- */}
         <div className="relative z-10 flex min-h-[100svh] flex-col overflow-hidden lg:motion-safe:absolute lg:motion-safe:inset-0 lg:motion-safe:min-h-0">
           {/* Halftone layer — scrubbed fade + shader scatter */}
@@ -184,18 +313,36 @@ export function HeroFilm() {
           </div>
         </div>
 
-        {/* ---- Film layer ---- */}
-        <div className="relative z-20 flex flex-col items-center bg-paper py-24 lg:motion-safe:absolute lg:motion-safe:inset-0 lg:motion-safe:justify-center lg:motion-safe:bg-transparent lg:motion-safe:py-0 lg:motion-safe:pointer-events-none">
+        {/* ---- Whiteout wash — inside the stage (over the hero, under the film) ---- */}
+        <div
+          onClick={closeFocus}
+          aria-hidden={!focused}
+          className={cn(
+            "fixed inset-0 z-[15] bg-[#f6f2ec]/90 transition-opacity duration-300",
+            focused ? "opacity-100" : "pointer-events-none opacity-0",
+          )}
+        />
+
+        {/* ---- Film layer (above the wash) ---- */}
+        <div
+          className={cn(
+            "relative z-20 flex flex-col items-center bg-paper py-24 lg:motion-safe:absolute lg:motion-safe:inset-0 lg:motion-safe:justify-center lg:motion-safe:bg-transparent lg:motion-safe:py-0 lg:motion-safe:pointer-events-none",
+            focused && "pointer-events-none",
+          )}
+        >
           <Container className="w-full">
             {/* The moving group — label + frame ride together */}
             <div
               ref={filmGroupRef}
               className="relative mx-auto w-full origin-center opacity-0 motion-reduce:opacity-100 lg:motion-safe:w-[min(100%,112svh)]"
             >
-              {/* Label, glued just above the frame (fades out mid-rise) */}
+              {/* Label, glued just above the frame (fades out mid-rise / on focus) */}
               <div
                 ref={labelRef}
-                className="pointer-events-none absolute bottom-full left-0 mb-5 flex w-full justify-center"
+                className={cn(
+                  "pointer-events-none absolute bottom-full left-0 mb-5 flex w-full justify-center",
+                  focused && "opacity-0",
+                )}
               >
                 <span className="flex items-center gap-2.5 text-lg font-normal text-taupe">
                   <PlayTriangle className="h-[0.7em] w-[0.7em]" />
@@ -203,28 +350,50 @@ export function HeroFilm() {
                 </span>
               </div>
 
-              {/* Frame */}
+              {/* Frame — a muted looping preview (idle) becomes the movie
+                  (focused) in place; the scrubber lives on the bottom edge */}
               <div
+                ref={filmFrameRef}
                 style={{ borderRadius: "1.25rem" }}
-                className="pointer-events-auto relative aspect-[3/2] w-full overflow-hidden bg-dark"
+                className="group/film pointer-events-auto relative aspect-[3/2] w-full overflow-hidden bg-dark"
               >
-                {!playing ? (
+                {focused ? (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src="/video/mishimamovie.mp4"
+                      playsInline
+                      preload="auto"
+                      onClick={togglePlay}
+                      onEnded={closeFocus}
+                      className="h-full w-full cursor-pointer bg-dark object-cover"
+                    />
+                    {/* Clean bar on the bottom edge — reveals on hover */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.34),transparent)] px-4 pb-4 pt-9 opacity-0 transition-opacity duration-300 group-hover/film:pointer-events-auto group-hover/film:opacity-100">
+                      <FilmScrubber videoRef={videoRef} />
+                    </div>
+                  </>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => setPlaying(true)}
+                    onClick={openFocus}
                     aria-label="Play the film — The Sculptor"
                     className="group absolute inset-0 h-full w-full"
                   >
-                    <Image
-                      src="/images/sculptor.webp"
-                      alt=""
+                    {/* Preview: the film itself, muted + looping in the background */}
+                    <video
+                      src="/video/mishimamovie.mp4"
+                      muted
+                      loop
+                      autoPlay
+                      playsInline
+                      preload="auto"
                       aria-hidden
-                      fill
-                      priority
-                      sizes="(max-width: 1024px) 100vw, 75vw"
-                      className="object-cover grayscale transition-transform duration-700 group-hover:scale-[1.03]"
+                      ref={(el) => {
+                        if (el) el.muted = true;
+                      }}
+                      className="absolute inset-0 h-full w-full object-cover grayscale"
                     />
-                    <span aria-hidden className="absolute inset-0 bg-black/40" />
                     {/* White in-film label — rises over the movie as it centers (lg+ only) */}
                     <div
                       ref={watchTextRef}
@@ -239,22 +408,27 @@ export function HeroFilm() {
                       </span>
                     </div>
                   </button>
-                ) : (
-                  <video
-                    src="/video/the-film.mp4"
-                    poster="/images/sculptor.webp"
-                    controls
-                    autoPlay
-                    playsInline
-                    preload="none"
-                    className="absolute inset-0 h-full w-full bg-dark object-cover"
-                  />
                 )}
               </div>
             </div>
           </Container>
         </div>
       </div>
+
+      {/* ---- Close ---- */}
+      <button
+        ref={closeBtnRef}
+        type="button"
+        onClick={closeFocus}
+        aria-label="Close"
+        tabIndex={focused ? 0 : -1}
+        className={cn(
+          "fixed right-5 top-5 z-[61] text-ink/70 transition-opacity duration-300 hover:text-ink",
+          focused ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      >
+        <CloseIcon className="h-7 w-7" />
+      </button>
     </section>
   );
 }

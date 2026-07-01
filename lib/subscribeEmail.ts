@@ -1,18 +1,36 @@
 /**
- * The single email-capture seam. Swap the body for a real provider
- * (Buttondown / ConvertKit / Formspree / a route handler) later without
- * touching any component. For now it logs and fakes success.
+ * The single email-capture seam. The UI never talks to a provider directly — it
+ * calls this, which POSTs to the /api/waitlist route handler. Swap the provider
+ * server-side (Resend / Supabase / Buttondown …) in app/api/waitlist/route.ts
+ * without touching any component.
  */
 export async function subscribeEmail(
   email: string,
+  honeypot = "",
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!isValidEmail(email)) {
     return { ok: false, error: "Enter a valid email." };
   }
-  // eslint-disable-next-line no-console
-  console.log("[subscribeEmail] stub →", email);
-  await new Promise((r) => setTimeout(r, 600)); // fake latency
-  return { ok: true };
+  try {
+    const res = await fetch("/api/waitlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), company: honeypot }),
+    });
+    const data = (await res.json().catch(() => null)) as
+      | { ok: true }
+      | { ok: false; error: string }
+      | null;
+
+    if (res.ok && data?.ok) return { ok: true };
+    return {
+      ok: false,
+      error:
+        data && data.ok === false ? data.error : "Something went wrong. Try again.",
+    };
+  } catch {
+    return { ok: false, error: "Network error. Try again." };
+  }
 }
 
 export function isValidEmail(email: string): boolean {

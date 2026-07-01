@@ -5,6 +5,9 @@ import { useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { subscribeEmail } from "@/lib/subscribeEmail";
 
+// The site's signature ease (drives the nav width-grow).
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
 function PlusIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -20,14 +23,33 @@ function PlusIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * Honeypot: a decoy field hidden from real users (off-screen, non-focusable,
+ * aria-hidden). Bots fill every field, so a non-empty value flags a bot and the
+ * server silently drops the submission. Read by ref, not form serialization.
+ */
+function Honeypot({ inputRef }: { inputRef: React.Ref<HTMLInputElement> }) {
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      name="company"
+      tabIndex={-1}
+      autoComplete="off"
+      aria-hidden="true"
+      className="pointer-events-none absolute left-[-9999px] top-0 h-0 w-0 opacity-0"
+    />
+  );
+}
+
 type Variant = "nav" | "bar";
 type Tone = "light" | "dark" | "auto";
 type Phase = "idle" | "open" | "submitting" | "success" | "error";
 
 /**
  * The one CTA pattern. `bar` = full-width plinth (hero / final CTA);
- * `nav` = compact chip. Hover invert is INSTANT (pure CSS, transition-none);
- * only the expand/grow is eased. Submits via the swappable subscribeEmail seam.
+ * `nav` = compact chip. Hover invert is INSTANT (pure CSS); the bar swaps phases
+ * flatly with no transition. Submits via the swappable subscribeEmail seam.
  */
 export function WaitlistCTA({
   variant,
@@ -44,6 +66,7 @@ export function WaitlistCTA({
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const honeypotRef = useRef<HTMLInputElement>(null);
 
   const busy = phase === "submitting";
 
@@ -57,7 +80,7 @@ export function WaitlistCTA({
     if (busy) return;
     setPhase("submitting");
     setError(null);
-    const res = await subscribeEmail(email);
+    const res = await subscribeEmail(email, honeypotRef.current?.value ?? "");
     if (res.ok) setPhase("success");
     else {
       setError(res.error);
@@ -74,13 +97,16 @@ export function WaitlistCTA({
   }
 
   // Instant-invert color pair for the nav idle chip (the tactile signature).
+  // `auto` tracks the continuous --flip palette so the chip dims with the page.
   const idleInvert =
-    tone === "dark"
-      ? "border border-paper bg-paper text-ink hover:bg-transparent hover:text-paper"
-      : "border border-ink bg-ink text-paper hover:bg-paper hover:text-ink";
+    tone === "auto"
+      ? "border border-[var(--page-text)] bg-[var(--page-text)] text-[var(--page-bg)] hover:bg-transparent hover:text-[var(--page-text)]"
+      : tone === "dark"
+        ? "border border-paper bg-paper text-ink hover:bg-transparent hover:text-paper"
+        : "border border-ink bg-ink text-paper hover:bg-paper hover:text-ink";
 
-  // ---- BAR (hero / final CTA): ONE persistent rectangle — color + content
-  //      swap by phase (no fade between states). Big light type, + submits. ----
+  // ---- BAR (hero / final CTA): ONE rectangle; content swaps by phase with no
+  //      transition. Instant hover-invert; no press, no sending state. ----------
   if (variant === "bar") {
     const base =
       tone === "auto"
@@ -96,12 +122,10 @@ export function WaitlistCTA({
           : "hover:bg-paper hover:text-ink";
     const field =
       "bg-paper text-ink border border-ink caret-ink placeholder:text-taupe";
-    // Same rectangle for every phase — equal padding all round, big light type.
-    // transition-transform only: color inverts instantly, the press eases.
-    const bar =
-      "flex h-[4.5rem] w-full items-center gap-4 px-5 sm:h-24 sm:px-7";
+    const bar = "flex h-[4.5rem] w-full items-center gap-4 px-5 sm:h-24 sm:px-7";
     const textCls =
       "text-[2rem] font-light leading-none tracking-tight sm:text-[2.85rem]";
+    const iconCls = "h-9 w-9 shrink-0 sm:h-11 sm:w-11";
 
     return (
       <div className={cn("relative w-full", className)}>
@@ -109,22 +133,20 @@ export function WaitlistCTA({
           <button
             type="button"
             onClick={open}
-            className={cn(
-              bar,
-              base,
-              hover,
-              "transition-transform duration-100 active:scale-[0.99]",
-            )}
+            className={cn(bar, base, hover)}
           >
             <span className={cn("flex-1 text-left", textCls)}>{label}</span>
-            <PlusIcon className="h-9 w-9 shrink-0 sm:h-11 sm:w-11" />
+            <PlusIcon className={iconCls} />
           </button>
         ) : phase === "success" ? (
           <div className={cn(bar, field)}>
-            <span className={cn("flex-1", textCls)}>You&rsquo;re on the list.</span>
+            <span className={cn("flex-1", textCls)}>
+              You&rsquo;re on the list.
+            </span>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className={cn(bar, field)}>
+            <Honeypot inputRef={honeypotRef} />
             <input
               ref={inputRef}
               type="email"
@@ -141,11 +163,10 @@ export function WaitlistCTA({
             <button
               type="submit"
               data-cta-submit
-              disabled={busy}
               aria-label="Join the waitlist"
-              className="shrink-0 transition-opacity disabled:opacity-40"
+              className="shrink-0"
             >
-              <PlusIcon className="h-9 w-9 sm:h-11 sm:w-11" />
+              <PlusIcon className={iconCls} />
             </button>
           </form>
         )}
@@ -173,7 +194,7 @@ export function WaitlistCTA({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.14 }}
             className={cn(
-              "flex h-10 items-center gap-2.5 px-4 text-[1.0625rem] font-light tracking-tight transition-transform duration-100 active:scale-[0.98]",
+              "flex h-10 items-center gap-2.5 px-4 text-[1.0625rem] font-light tracking-tight",
               idleInvert,
             )}
           >
@@ -189,9 +210,10 @@ export function WaitlistCTA({
             initial={{ opacity: 0, width: 0 }}
             animate={{ opacity: 1, width: "min(22rem, 72vw)" }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.22, ease: EASE }}
             className="flex h-10 items-stretch overflow-hidden border border-ink bg-paper text-ink"
           >
+            <Honeypot inputRef={honeypotRef} />
             <input
               ref={inputRef}
               type="email"
@@ -207,9 +229,8 @@ export function WaitlistCTA({
             <button
               type="submit"
               data-cta-submit
-              disabled={busy}
               aria-label="Join the waitlist"
-              className="flex h-full shrink-0 items-center pr-3 text-ink transition-transform duration-100 active:scale-90 disabled:opacity-40"
+              className="flex h-full shrink-0 items-center pr-3 text-ink"
             >
               <PlusIcon className="h-5 w-5" />
             </button>
@@ -224,7 +245,11 @@ export function WaitlistCTA({
             transition={{ duration: 0.2 }}
             className={cn(
               "font-mono text-[0.6875rem] uppercase tracking-[0.16em]",
-              tone === "dark" ? "text-paper" : "text-ink",
+              tone === "auto"
+                ? "text-[var(--page-text)]"
+                : tone === "dark"
+                  ? "text-paper"
+                  : "text-ink",
             )}
           >
             You&rsquo;re on the list.
