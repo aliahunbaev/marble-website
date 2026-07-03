@@ -62,6 +62,9 @@ export function HeroFilm() {
 
   const [phase, setPhase] = useState<Phase>("idle");
   const focused = phase === "focused";
+  const phaseRef = useRef<Phase>("idle");
+  // Gates the WebGL halftone + preview decode to when the hero is on screen.
+  const [heroActive, setHeroActive] = useState(true);
 
   useGSAP(
     () => {
@@ -160,6 +163,26 @@ export function HeroFilm() {
           if (film) gsap.set(film, { clearProps: "opacity,visibility" });
         };
       });
+
+      // Sleep the shader + preview decode whenever the hero is off screen —
+      // the rest of the page pays zero hero cost, and the return trip past
+      // the film stops hitching. (All widths; the context cleans it up.)
+      ScrollTrigger.create({
+        trigger: section,
+        start: "top bottom",
+        end: "bottom top",
+        onToggle: (self) => {
+          setHeroActive(self.isActive);
+          const p = previewRef.current;
+          if (!p) return;
+          if (!self.isActive) p.pause();
+          else if (
+            phaseRef.current === "idle" &&
+            !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          )
+            p.play().catch(() => {});
+        },
+      });
     },
     { scope: sectionRef },
   );
@@ -179,6 +202,7 @@ export function HeroFilm() {
 
   const closeFocus = useCallback(() => {
     scrollTweenRef.current?.kill();
+    phaseRef.current = "idle";
     setPhase("idle");
   }, []);
 
@@ -195,6 +219,7 @@ export function HeroFilm() {
       movie.play().catch(() => {});
     }
     previewRef.current?.pause();
+    phaseRef.current = "focused";
     setPhase("focused");
   };
 
@@ -305,6 +330,7 @@ export function HeroFilm() {
               focalX={0.52}
               focalY={0.4}
               dissolveRef={dissolve}
+              active={heroActive}
               className="halftone-fade-in"
             />
             <div
@@ -391,7 +417,7 @@ export function HeroFilm() {
                     previewRef.current = el;
                     if (el) el.muted = true;
                   }}
-                  className="absolute inset-0 h-full w-full object-cover grayscale"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
 
                 {/* The movie — fetched only when played (preload none) */}

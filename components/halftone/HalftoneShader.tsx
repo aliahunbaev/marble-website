@@ -151,14 +151,16 @@ function HalftonePlane({
 }
 
 export function HalftoneShader(props: HalftoneProps) {
-  // Always render so the cursor trail keeps animating. (Single hero shader →
-  // negligible cost; the demand/visibility toggle was unreliable on the pinned
-  // hero layout and could freeze the loop.)
+  // Render continuously while the owner says we're on screen (the internal
+  // demand/IO toggle was unreliable on the pinned hero — an EXPLICIT prop
+  // from the section's own ScrollTrigger is deterministic). Parked, the GPU
+  // does nothing — scrolling the rest of the page pays zero shader cost.
+  const active = props.active ?? true;
   return (
     <div className="absolute inset-0 h-full w-full">
       <Canvas
         flat
-        frameloop="always"
+        frameloop={active ? "always" : "never"}
         dpr={[1, 2]}
         gl={{ alpha: true, antialias: true, premultipliedAlpha: false }}
         style={{ width: "100%", height: "100%" }}

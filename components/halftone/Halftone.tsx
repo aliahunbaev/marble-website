@@ -24,6 +24,9 @@ export interface HalftoneProps extends HalftoneStaticProps {
   interactive?: boolean;
   /** Scroll-driven scatter 0..1 (shader only); static path ignores it. */
   dissolveRef?: { current: number };
+  /** Render loop gate (shader only): false parks the WebGL loop entirely —
+      set by the owner when the halftone has scrolled out of view. */
+  active?: boolean;
 }
 
 /**
@@ -32,7 +35,10 @@ export interface HalftoneProps extends HalftoneStaticProps {
  * canvas. Both fill the same absolutely-positioned box → zero layout change.
  */
 export function Halftone(props: HalftoneProps) {
-  const { className, forceStatic, ...rest } = props;
+  // `active` is pulled out so it never reaches HalftoneStatic's DOM spread;
+  // the shader path reads it from `props` directly.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { className, forceStatic, active: _active, ...rest } = props;
   const cap = useCapability();
 
   const useShader =
