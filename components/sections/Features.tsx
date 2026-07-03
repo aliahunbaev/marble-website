@@ -1,86 +1,102 @@
+"use client";
+
+import { useRef } from "react";
+import { gsap } from "@/lib/gsap";
 import { cn } from "@/lib/cn";
 import { Container } from "@/components/primitives/Container";
+import { DailyLineDemo } from "@/components/demos/DailyLineDemo";
+import { LiveSetDemo, type LiveSetDemoHandle } from "@/components/demos/LiveSetDemo";
+import { ProgressDemo } from "@/components/demos/ProgressDemo";
+import { MonthGridDemo } from "@/components/demos/MonthGridDemo";
+import { EntryDemo } from "@/components/demos/EntryDemo";
 
-/**
- * One showcase block: a primary heading (ink) with a same-size grayed secondary
- * line directly under it, then a website-proportioned media area below. The media
- * is a placeholder for now — real gifs / screen recordings / a small interactive
- * "complete a set" demo drop into these later.
- */
-function ShowcaseBlock({
-  title,
-  sub,
-  ratio,
-  align = "left",
-  label,
-}: {
-  title: string;
-  sub: string;
-  ratio: string;
-  align?: "left" | "center";
-  label?: string;
-}) {
-  const typeCls =
-    "text-[clamp(1.5rem,2.4vw,2rem)] font-light leading-snug tracking-tight";
-  return (
-    <section className="border-t border-hairline py-16 sm:py-24">
-      <Container>
-        <div className={cn("max-w-3xl", align === "center" && "mx-auto text-center")}>
-          <h2 className={cn(typeCls, "text-ink")}>{title}</h2>
-          <p className={cn(typeCls, "text-taupe")}>{sub}</p>
-        </div>
-        {/* Website-ratio media placeholder (assets drop in later). */}
-        <div
-          aria-hidden
-          className={cn(
-            "mx-auto mt-10 flex w-full max-w-5xl items-center justify-center border border-hairline bg-field sm:mt-14",
-            ratio,
-          )}
-        >
-          <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-taupe/50">
-            {label ?? "placeholder"}
-          </span>
-        </div>
-      </Container>
-    </section>
-  );
-}
+const titleCls =
+  "text-[clamp(1.625rem,2.6vw,2.25rem)] font-light leading-snug tracking-tight";
+const captionCls = "mt-4 text-center text-[1.0625rem] font-light text-taupe";
 
 export function Features() {
+  const workSectionRef = useRef<HTMLElement>(null);
+  const liveSet = useRef<LiveSetDemoHandle>(null);
+  const scrollTween = useRef<gsap.core.Tween | null>(null);
+
+  // The connected flow: Start Workout in the first demo carries you into the
+  // work section and begins the set — the page as one day in the app.
+  const startWorkout = () => {
+    const target = workSectionRef.current;
+    if (!target) return;
+    scrollTween.current?.kill();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      target.scrollIntoView();
+      liveSet.current?.run();
+      return;
+    }
+    scrollTween.current = gsap.to(window, {
+      scrollTo: { y: target, offsetY: 40, autoKill: false },
+      duration: 0.9,
+      ease: "power2.inOut",
+      onComplete: () => liveSet.current?.run(),
+    });
+  };
+
   return (
     <>
-      <ShowcaseBlock
-        align="center"
-        title="Grounded in philosophy."
-        sub="Marble's design is rooted in focus and a harmony of mental and physical strength."
-        ratio="aspect-[16/10]"
-        label="Screen recording"
-      />
-      <ShowcaseBlock
-        title="A line a day."
-        sub="Open with a daily passage, not a streak counter."
-        ratio="aspect-[3/2]"
-        label="Daily reading"
-      />
-      <ShowcaseBlock
-        title="Log it live."
-        sub="Templates, live sets, and your last numbers as you go."
-        ratio="aspect-[16/9]"
-        label="Interactive — complete a set"
-      />
-      <ShowcaseBlock
-        title="A record worth keeping."
-        sub="Each session becomes an entry — a title, a photo, a note."
-        ratio="aspect-[16/10]"
-        label="Saved entry"
-      />
-      <ShowcaseBlock
-        align="center"
-        title="Iron sharpens iron."
-        sub="Support and compete with fellow athletes."
-        ratio="aspect-[3/2]"
-        label="Community"
-      />
+      {/* §1 Mind and body — the line pair centered above the cinematic card */}
+      <section className="border-t border-hairline py-16 sm:py-24">
+        <Container>
+          {/* Primary left, secondary right on one line; stacked left when narrow */}
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-8">
+            <h2 className={cn(titleCls, "shrink-0 text-ink")}>
+              Mind over matter.
+            </h2>
+            <p className={cn(titleCls, "text-taupe sm:text-right")}>
+              Ground the workout in wisdom.
+            </p>
+          </div>
+          <div className="mt-10 sm:mt-14">
+            <DailyLineDemo onStart={startWorkout} />
+          </div>
+        </Container>
+      </section>
+
+      {/* §2 Focus on the work — three features in a row */}
+      <section ref={workSectionRef} className="border-t border-hairline py-16 sm:py-24">
+        <Container>
+          
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className={cn(titleCls, "text-ink")}>Focus on the work.</h2>
+          </div>
+          <div className="mt-10 grid w-full grid-cols-1 gap-10 sm:mt-14 sm:grid-cols-3 sm:gap-8">
+            <div className="mx-auto flex w-full max-w-[28rem] flex-col">
+              <ProgressDemo />
+              <p className={captionCls}>Visualize your progress.</p>
+              
+            </div>
+            <div className="mx-auto flex w-full max-w-[28rem] flex-col">
+              <LiveSetDemo ref={liveSet} />
+              <p className={captionCls}>Rest and history built in.</p>
+            </div>
+            <div className="mx-auto flex w-full max-w-[28rem] flex-col">
+              <MonthGridDemo />
+              <p className={captionCls}>Keep stacking days.</p>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      {/* §3 A record worth keeping — the journal feed, flanked */}
+      <section className="border-t border-hairline py-16 sm:py-24">
+        <Container>
+          {/* Primary faces the card from the left, secondary from the right —
+              columns hug the feed rather than the screen edges. */}
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,18rem)_minmax(0,26rem)_minmax(0,18rem)] lg:justify-center lg:gap-14">
+            <h2 className={cn(titleCls, "text-ink lg:text-right")}>
+              Your training journal.
+            </h2>
+            <EntryDemo />
+            <p className={cn(titleCls, "text-taupe")}>Beautifully documented.</p>
+          </div>
+        </Container>
+      </section>
     </>
   );
 }

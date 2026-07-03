@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Container } from "@/components/primitives/Container";
 import { Eyebrow } from "@/components/primitives/Eyebrow";
 import { Wordmark } from "@/components/primitives/Wordmark";
@@ -56,13 +57,13 @@ export default function Library() {
   return (
     <main className="min-h-screen bg-paper pb-32 pt-24 text-ink">
       <Container>
-        <a
+        <Link
           href="/"
           className="inline-block text-[0.95rem]"
           aria-label="Marble — home"
         >
           <Wordmark withMark />
-        </a>
+        </Link>
 
         <div className="mt-20 max-w-3xl sm:mt-28">
           <Eyebrow>Library</Eyebrow>
@@ -97,7 +98,7 @@ export default function Library() {
         </ul>
 
         <div className="mt-20">
-          <a
+          <Link
             href="/"
             className="group inline-flex items-center gap-2 font-mono text-[0.6875rem] uppercase tracking-[0.16em] text-taupe transition-colors hover:text-ink"
           >
@@ -108,7 +109,7 @@ export default function Library() {
               ←
             </span>
             Back to Marble
-          </a>
+          </Link>
         </div>
       </Container>
     </main>

@@ -53,6 +53,7 @@ export function HeroFilm() {
   const watchTextRef = useRef<HTMLDivElement>(null);
   const filmFrameRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewRef = useRef<HTMLVideoElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const dissolve = useRef(0);
 
@@ -181,10 +182,19 @@ export function HeroFilm() {
     setPhase("idle");
   }, []);
 
-  // Enter focus immediately — the wash + poster→video swap apply at once; the
-  // scroll-to-center runs inside the focus effect (concurrently, under the wash).
+  // Enter focus immediately — wash + movie reveal apply at once; the scroll runs
+  // in the focus effect. The movie's unmuted play() MUST happen synchronously in
+  // the click gesture: Safari only allows sound while transient user activation
+  // lasts, and a scroll-tween onComplete ~0.55s later is past that window.
   const openFocus = () => {
     if (phase !== "idle") return;
+    const movie = videoRef.current;
+    if (movie) {
+      movie.muted = false;
+      movie.currentTime = 0;
+      movie.play().catch(() => {});
+    }
+    previewRef.current?.pause();
     setPhase("focused");
   };
 
@@ -195,12 +205,15 @@ export function HeroFilm() {
     else v.pause();
   };
 
-  // The wash + poster→video swap apply immediately (state). This effect scrolls
-  // the film to center under the wash; once landed it locks scroll, freezes the
-  // scrub, settles the frame dead-center, and plays from the start.
+  // The wash + movie reveal apply immediately (state); playback already started
+  // in the click. This effect scrolls the film to center under the wash; once
+  // landed it locks scroll and settles the frame dead-center.
   useEffect(() => {
     if (phase !== "focused") return;
     const body = document.body;
+    const group = filmGroupRef.current;
+    const movie = videoRef.current;
+    const preview = previewRef.current;
     const prevActive = document.activeElement as HTMLElement | null;
     let prevBodyOverflow = "";
     let prevPad = "";
@@ -217,17 +230,12 @@ export function HeroFilm() {
       // Settle dead-center (the scrub can lag the tween). The trigger stays
       // ENABLED — the locked scroll just holds it here, so leaving focus needs
       // no re-enable (re-enabling is what snapped the film up from below).
-      gsap.to(filmGroupRef.current, {
+      gsap.to(group, {
         y: 0,
         scale: 1,
         duration: 0.4,
         ease: "power2.out",
       });
-      const v = videoRef.current;
-      if (v) {
-        v.currentTime = 0;
-        v.play().catch(() => {});
-      }
     };
 
     const target = centeredScrollY();
@@ -258,12 +266,22 @@ export function HeroFilm() {
       window.removeEventListener("touchmove", blockScroll);
       body.style.overflow = prevBodyOverflow;
       body.style.paddingRight = prevPad;
-      gsap.set(filmGroupRef.current, { clearProps: "transform" });
-      videoRef.current?.pause();
+      gsap.set(group, { clearProps: "transform" });
+      movie?.pause();
+      preview?.play().catch(() => {});
       window.removeEventListener("keydown", onKey);
       prevActive?.focus?.({ preventScroll: true });
     };
   }, [phase, closeFocus, centeredScrollY]);
+
+  // Idle preview: reduced motion holds the first frame; otherwise nudge play()
+  // in case the autoplay attribute raced hydration and never fired.
+  useEffect(() => {
+    const p = previewRef.current;
+    if (!p) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) p.pause();
+    else p.play().catch(() => {});
+  }, []);
 
   return (
     <section id="top" ref={sectionRef} className="relative bg-paper">
@@ -350,65 +368,83 @@ export function HeroFilm() {
                 </span>
               </div>
 
-              {/* Frame — a muted looping preview (idle) becomes the movie
-                  (focused) in place; the scrubber lives on the bottom edge */}
+              {/* Frame — persistent layers: a tiny looping preview cut under-
+                  neath, the movie above it (revealed on focus), the click layer
+                  + labels on top. Nothing unmounts across open/close, so the
+                  label timeline keeps valid targets and the movie element
+                  exists when the click needs to play() it synchronously. */}
               <div
                 ref={filmFrameRef}
                 style={{ borderRadius: "1.25rem" }}
                 className="group/film pointer-events-auto relative aspect-[3/2] w-full overflow-hidden bg-dark"
               >
-                {focused ? (
-                  <>
-                    <video
-                      ref={videoRef}
-                      src="/video/mishimamovie.mp4"
-                      playsInline
-                      preload="auto"
-                      onClick={togglePlay}
-                      onEnded={closeFocus}
-                      className="h-full w-full cursor-pointer bg-dark object-cover"
-                    />
-                    {/* Clean bar on the bottom edge — reveals on hover */}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.34),transparent)] px-4 pb-4 pt-9 opacity-0 transition-opacity duration-300 group-hover/film:pointer-events-auto group-hover/film:opacity-100">
-                      <FilmScrubber videoRef={videoRef} />
-                    </div>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={openFocus}
-                    aria-label="Play the film — The Sculptor"
-                    className="group absolute inset-0 h-full w-full"
+                {/* Idle preview — a 190KB ping-pong loop, not the 22MB film */}
+                <video
+                  src="/video/film-preview.mp4"
+                  muted
+                  loop
+                  autoPlay
+                  playsInline
+                  preload="auto"
+                  aria-hidden
+                  ref={(el) => {
+                    previewRef.current = el;
+                    if (el) el.muted = true;
+                  }}
+                  className="absolute inset-0 h-full w-full object-cover grayscale"
+                />
+
+                {/* The movie — fetched only when played (preload none) */}
+                <video
+                  ref={videoRef}
+                  src="/video/mishimamovie.mp4"
+                  playsInline
+                  preload="none"
+                  onClick={togglePlay}
+                  onEnded={closeFocus}
+                  className={cn(
+                    "absolute inset-0 h-full w-full cursor-pointer bg-dark object-cover transition-opacity duration-300",
+                    focused ? "opacity-100" : "pointer-events-none opacity-0",
+                  )}
+                />
+
+                {/* Idle click layer + white in-film label (lg+ only) */}
+                <button
+                  type="button"
+                  onClick={openFocus}
+                  aria-label="Play the film — The Sculptor"
+                  aria-hidden={focused}
+                  tabIndex={focused ? -1 : 0}
+                  className={cn(
+                    "absolute inset-0 h-full w-full",
+                    focused && "pointer-events-none opacity-0",
+                  )}
+                >
+                  <div
+                    ref={watchTextRef}
+                    className="hidden h-full w-full items-center justify-between px-[7%] text-paper lg:motion-safe:flex"
                   >
-                    {/* Preview: the film itself, muted + looping in the background */}
-                    <video
-                      src="/video/mishimamovie.mp4"
-                      muted
-                      loop
-                      autoPlay
-                      playsInline
-                      preload="auto"
-                      aria-hidden
-                      ref={(el) => {
-                        if (el) el.muted = true;
-                      }}
-                      className="absolute inset-0 h-full w-full object-cover grayscale"
-                    />
-                    {/* White in-film label — rises over the movie as it centers (lg+ only) */}
-                    <div
-                      ref={watchTextRef}
-                      className="relative hidden h-full w-full items-center justify-between px-[7%] text-paper lg:motion-safe:flex"
-                    >
-                      <span className="flex items-center gap-4 text-[clamp(1.5rem,3.5vw,2.75rem)] font-light leading-none">
-                        <PlayTriangle className="h-[0.66em] w-[0.66em]" />
-                        Watch
-                      </span>
-                      <span className="text-[clamp(1.5rem,3.5vw,2.75rem)] font-light leading-none">
-                        the film
-                      </span>
-                    </div>
-                  </button>
-                )}
+                    <span className="flex items-center gap-4 text-[clamp(1.5rem,3.5vw,2.75rem)] font-light leading-none">
+                      <PlayTriangle className="h-[0.66em] w-[0.66em]" />
+                      Watch
+                    </span>
+                    <span className="text-[clamp(1.5rem,3.5vw,2.75rem)] font-light leading-none">
+                      the film
+                    </span>
+                  </div>
+                </button>
+
+                {/* Scrubber — bottom edge, reveals on hover or keyboard focus */}
+                <div
+                  className={cn(
+                    "pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.34),transparent)] px-4 pb-4 pt-9 opacity-0 transition-opacity duration-300",
+                    focused
+                      ? "focus-within:pointer-events-auto focus-within:opacity-100 group-hover/film:pointer-events-auto group-hover/film:opacity-100"
+                      : "hidden",
+                  )}
+                >
+                  <FilmScrubber videoRef={videoRef} />
+                </div>
               </div>
             </div>
           </Container>

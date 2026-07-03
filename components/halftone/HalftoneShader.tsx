@@ -98,6 +98,10 @@ function HalftonePlane({
     };
   }, [gl, interactive]);
 
+  // R3F frame loop: shader uniforms are MEANT to be mutated per frame —
+  // setState at 60fps would remount the tree. The immutability rule doesn't
+  // model this, hence the targeted disables.
+  // eslint-disable-next-line react-hooks/immutability
   useFrame(() => {
     const list = trail.current;
     for (let i = 0; i < list.length; i++) list[i].decay *= trailDecay;
@@ -121,6 +125,7 @@ function HalftonePlane({
       const e = list[i];
       if (e) {
         uTrail[i].set(e.cx, e.cy);
+        // eslint-disable-next-line react-hooks/immutability
         uDecay[i] = e.decay;
       } else {
         uTrail[i].set(-9999, -9999);
