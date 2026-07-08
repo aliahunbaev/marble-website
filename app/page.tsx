@@ -25,18 +25,23 @@ export default function Home() {
           style={{ filter: "invert(var(--flip))" }}
         >
           <Halftone
-            src="/images/halftone-source.jpg"
-            cell={8}
+            src="/images/halftone-wide.webp"
+            srcPortrait="/images/halftone-mobile.webp"
+            cell={6}
+            cellPortrait={5}
             dotScale={0.9}
             invert
             dotColor="#0e0a07"
             ghost={0.25}
             focalX={0.5}
-            focalY={0.4}
+            focalY={0.5}
+            portraitFocalX={0.5}
+            portraitFocalY={0.4}
             forceStatic
           />
         </div>
-        <div className="relative z-10">
+        {/* One composed final viewport: CTA centered, footer at the bottom edge. */}
+        <div className="relative z-10 flex min-h-[100svh] flex-col">
           <FinalCta />
           <Footer />
         </div>

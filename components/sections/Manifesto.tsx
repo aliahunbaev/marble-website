@@ -43,26 +43,31 @@ export function Manifesto() {
 
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        // Reading-paced word reveal — each paragraph lights as it crosses center.
-        const reveal = (p: HTMLElement, toOpacity: number) =>
-          gsap.fromTo(
-            p.querySelectorAll(".reveal-word"),
+        // ONE scrubbed timeline for both paragraphs — P2 structurally cannot
+        // start until P1 has finished, at any viewport. (Independent
+        // per-paragraph triggers let them overlap on short screens.)
+        const words1 = p1.querySelectorAll(".reveal-word");
+        const words2 = p2.querySelectorAll(".reveal-word");
+        const reveal = gsap.timeline({
+          scrollTrigger: {
+            trigger: p1.parentElement,
+            start: "top 62%",
+            end: "bottom 55%",
+            scrub: true,
+          },
+        });
+        reveal
+          .fromTo(
+            words1,
             { opacity: 0.1 },
-            {
-              opacity: toOpacity,
-              ease: "none",
-              stagger: 0.12,
-              scrollTrigger: {
-                trigger: p,
-                start: "top 60%",
-                end: "top 10%",
-                scrub: true,
-              },
-            },
+            { opacity: 1, ease: "none", stagger: 0.12, duration: 1 },
+          )
+          .to({}, { duration: 1.4 }) // breath between the paragraphs
+          .fromTo(
+            words2,
+            { opacity: 0.1 },
+            { opacity: 1, ease: "none", stagger: 0.12, duration: 1 },
           );
-        // Both fill to full opacity — P1 stays legible once the page flips to dark.
-        reveal(p1, 1);
-        reveal(p2, 1);
 
         // Lights-off — a timed fade fired BETWEEN the paragraphs (as P2 arrives).
         const pingNav = () => window.dispatchEvent(new Event("marble:flip"));

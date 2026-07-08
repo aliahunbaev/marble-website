@@ -8,7 +8,7 @@ import { WaitlistCTA } from "@/components/cta/WaitlistCTA";
  */
 export function FinalCta() {
   return (
-    <section className="relative py-32 sm:py-44">
+    <section className="relative flex flex-1 flex-col justify-center py-20 sm:py-24">
       <Container>
         <h2 className="text-center text-[clamp(2.5rem,8vw,6rem)] font-light leading-[0.96] tracking-[-0.03em]">
           Start training.

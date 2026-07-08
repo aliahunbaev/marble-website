@@ -318,17 +318,23 @@ export function HeroFilm() {
       >
         {/* ---- Hero block (halftone + content) ---- */}
         <div className="relative z-10 flex min-h-[100svh] flex-col overflow-hidden lg:motion-safe:absolute lg:motion-safe:inset-0 lg:motion-safe:min-h-0">
-          {/* Halftone layer — scrubbed fade + shader scatter */}
-          <div ref={halftoneRef} className="absolute inset-0">
+          {/* Halftone layer — scrubbed fade + shader scatter. On phones the figure
+              recedes (max-md opacity) so the headline owns the foreground; desktop
+              keeps it at full strength (figure sits beside the text there). */}
+          <div ref={halftoneRef} className="absolute inset-0 max-md:opacity-[0.62]">
             <Halftone
-              src="/images/halftone-source.jpg"
-              cell={7}
+              src="/images/halftone-wide.webp"
+              srcPortrait="/images/halftone-mobile.webp"
+              cell={5}
+              cellPortrait={4}
               dotScale={0.9}
               contrast={1.1}
-              invert
+              invert={false}
               dotColor="#0e0a07"
-              focalX={0.52}
-              focalY={0.4}
+              focalX={0.5}
+              focalY={0.44}
+              portraitFocalX={0.5}
+              portraitFocalY={0.4}
               dissolveRef={dissolve}
               active={heroActive}
               className="halftone-fade-in"

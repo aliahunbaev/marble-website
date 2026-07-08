@@ -54,7 +54,9 @@ export const halftoneFragment = /* glsl */ `
     float imgAR = uImageRes.x / uImageRes.y;
     vec2 s = (imgAR > resAR) ? vec2(resAR / imgAR, 1.0) : vec2(1.0, imgAR / resAR);
     vec2 uvImg = (uvScreen - 0.5) * s + uFocal;
-    float l = luma(texture2D(uTexture, uvImg).rgb);
+    vec4 texc = texture2D(uTexture, uvImg);
+    if (texc.a < 0.5) discard; // transparent source → empty cell (bg stays paper)
+    float l = luma(texc.rgb);
     float v = mix(1.0 - l, l, uInvert);
     v = pow(clamp(v, 0.0, 1.0), uContrast);
 

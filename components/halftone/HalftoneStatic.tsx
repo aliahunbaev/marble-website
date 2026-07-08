@@ -105,6 +105,7 @@ export function HalftoneStatic({
       for (let gy = 0; gy < rows; gy++) {
         for (let gx = 0; gx < cols; gx++) {
           const i = (gy * cols + gx) * 4;
+          if (data[i + 3] < 128) continue; // transparent source → no dot
           const lum =
             (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
           let v = invert ? lum : 1 - lum;
