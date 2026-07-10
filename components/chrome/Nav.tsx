@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { Container } from "@/components/primitives/Container";
 import { WaitlistCTA } from "@/components/cta/WaitlistCTA";
@@ -66,8 +67,8 @@ export function Nav() {
       <Container className="flex h-16 items-center justify-between gap-4">
         {/* Left — the lockup: constant block, the name fades once scrolled.
             Masthead scale: the wordmark's cap height ≈ the block, per the mark. */}
-        <a
-          href="#top"
+        <Link
+          href="/#top"
           aria-label="Marble — top of page"
           className="flex shrink-0 items-center"
         >
@@ -85,7 +86,7 @@ export function Nav() {
           >
             Marble
           </span>
-        </a>
+        </Link>
 
         {/* Right — waitlist */}
         <WaitlistCTA variant="nav" tone="auto" className="shrink-0" />
