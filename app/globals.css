@@ -57,7 +57,10 @@
   --font-sans: var(--font-favorit);
   --font-mono: var(--font-favorit-mono);
 
-  /* Sharp edges everywhere — zero radius, no exceptions. */
+  /* Two materials: architecture (marks, plinths, type) is sharp — the whole
+     rounded-* token scale stays zero. Controls (buttons, fields, dialogs —
+     the app's control language) opt in DELIBERATELY with arbitrary values
+     (rounded-[10px] etc.), same as the film frame's inline radius. */
   --radius-xs: 0px;
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -71,15 +74,9 @@
 /* =====================================================================
    Base
    ===================================================================== */
-*,
-*::before,
-*::after {
-  border-radius: 0; /* belt-and-suspenders against any stray rounding */
-}
-
 html {
   -webkit-text-size-adjust: 100%;
-  scroll-behavior: auto; /* Lenis owns smooth scroll; never CSS smooth */
+  scroll-behavior: auto; /* native scroll; never CSS smooth */
 }
 
 body {

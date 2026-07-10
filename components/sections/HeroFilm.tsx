@@ -347,7 +347,7 @@ export function HeroFilm() {
 
           {/* Content layer — fades out (in place) by scroll % */}
           <div ref={contentRef} className="relative z-10 flex flex-1 flex-col">
-            <Container className="flex flex-1 flex-col justify-center pt-16">
+            <Container className="flex flex-1 flex-col justify-center pt-[6.5rem]">
               <h1 className="text-[2.75rem] font-light leading-[0.92] tracking-[-0.03em] text-ink opacity-0 motion-reduce:opacity-100 sm:text-[3.5rem] md:text-[4.5rem] lg:text-[5.75rem] xl:text-[7rem] 2xl:text-[8rem]">
                 Document
                 <br />
