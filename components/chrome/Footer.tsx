@@ -12,25 +12,14 @@ export function Footer() {
     <footer className="relative">
       <Container className="relative z-10">
         <div className="flex flex-col gap-8 border-t border-[rgba(128,128,128,0.25)] py-10 sm:flex-row sm:items-end sm:justify-between">
-          {/* Instagram joins here once the final handle exists. */}
+          {/* Instagram joins here once the final handle exists. /library is
+              parked — page kept, unlinked, pending a decision. */}
           <nav className="flex flex-wrap gap-x-10 gap-y-3 font-mono text-[0.75rem] uppercase tracking-[0.16em]">
-            <Link
-              href="/library"
-              className="opacity-85 transition-opacity hover:opacity-100"
-            >
-              Library
-            </Link>
             <Link
               href="/privacy"
               className="opacity-85 transition-opacity hover:opacity-100"
             >
               Privacy
-            </Link>
-            <Link
-              href="/terms"
-              className="opacity-85 transition-opacity hover:opacity-100"
-            >
-              Terms
             </Link>
           </nav>
           <p className="font-mono text-[0.6875rem] uppercase tracking-[0.16em] opacity-60">
