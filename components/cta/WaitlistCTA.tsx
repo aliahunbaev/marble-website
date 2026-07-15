@@ -258,7 +258,7 @@ export function WaitlistCTA({
         rel="noopener"
         aria-label="Download Marble on the App Store"
         className={cn(
-          "flex h-10 items-center gap-2 rounded-[8px] border px-4 text-[1.0625rem] font-light tracking-tight",
+          "flex h-10 items-center gap-2 border px-4 text-[1.0625rem] font-light tracking-tight",
           chipTone,
           className,
         )}
@@ -276,7 +276,7 @@ export function WaitlistCTA({
         onClick={() => setModalOpen(true)}
         aria-haspopup="dialog"
         className={cn(
-          "flex h-10 items-center gap-2 rounded-[8px] border px-4 text-[1.0625rem] font-light tracking-tight",
+          "flex h-10 items-center gap-2 border px-4 text-[1.0625rem] font-light tracking-tight",
           chipTone,
           className,
         )}

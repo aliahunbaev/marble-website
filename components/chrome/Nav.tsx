@@ -74,11 +74,11 @@ export function Nav() {
         >
           <span
             aria-hidden
-            className="h-8 w-8 shrink-0 bg-[var(--page-text)]"
+            className="h-7 w-7 shrink-0 bg-[var(--page-text)] sm:h-8 sm:w-8"
           />
           <span
             className={cn(
-              "overflow-hidden whitespace-nowrap text-[2.25rem] font-light leading-none tracking-tight text-[var(--page-text)] transition-[max-width,opacity,margin] duration-300 ease-out motion-reduce:transition-none",
+              "overflow-hidden whitespace-nowrap text-[1.875rem] font-light leading-none tracking-tight text-[var(--page-text)] transition-[max-width,opacity,margin] duration-300 ease-out motion-reduce:transition-none sm:text-[2.25rem]",
               condensed
                 ? "ml-0 max-w-0 opacity-0"
                 : "ml-1.5 max-w-[12rem] opacity-100",
