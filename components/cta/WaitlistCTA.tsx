@@ -12,7 +12,11 @@ const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 // Launch switch. Set in the environment (Vercel → redeploy) and every CTA
 // site-wide flips from waitlist capture to a straight App Store link —
 // no code change on approval day. Unset = waitlist, exactly as before.
-const APPSTORE_URL = process.env.NEXT_PUBLIC_APPSTORE_URL;
+// The app is live, so Download is the default everywhere. An env override
+// (NEXT_PUBLIC_APPSTORE_URL) still wins if ever set to point elsewhere.
+const APPSTORE_URL =
+  process.env.NEXT_PUBLIC_APPSTORE_URL ??
+  "https://apps.apple.com/us/app/marble-training-journal/id6779775636";
 
 function PlusIcon({ className }: { className?: string }) {
   return (

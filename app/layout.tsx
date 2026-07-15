@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   ),
   title: "Marble — Document your training.",
   description:
-    "Marble is a training journal for documenting and visualizing physical training. No coaches. No notifications. No noise. Join the waitlist.",
+    "Marble is a training journal for documenting and visualizing physical training. No coaches. No notifications. No noise. Now on the App Store.",
   applicationName: "Marble",
   authors: [{ name: "Combat Créatif" }],
   openGraph: {
