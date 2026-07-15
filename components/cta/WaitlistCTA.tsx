@@ -186,7 +186,9 @@ export function WaitlistCTA({
             aria-label="Download Marble on the App Store"
             className={cn(bar, base, hover)}
           >
-            <span className={cn("flex-1 text-left", textCls)}>Download</span>
+            <span className={cn("flex-1 text-left", textCls)}>
+              Download Marble
+            </span>
             <ArrowUpRightIcon className={iconCls} />
           </a>
         </div>
